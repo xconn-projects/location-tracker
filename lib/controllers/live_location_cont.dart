@@ -121,13 +121,13 @@ class LocationController extends GetxController {
   Future<void> _publish(double latitude, double longitude, String name) async {
     try {
       var session = await connect(
-        "ws://192.168.0.124:8080/ws",
-        "realm1",
+        urlLink,
+        realm,
         jsonSerializer,
       );
 
       await session.publish(
-        "io.xconn.location",
+        topicName,
         args: [latitude, longitude, name],
         kwargs: {},
       );
@@ -147,13 +147,13 @@ class LocationController extends GetxController {
   Future<void> _subscribe() async {
     try {
       var session = await connect(
-        "ws://192.168.0.124:8080/ws",
-        "realm1",
+        urlLink,
+        realm,
         jsonSerializer,
       );
 
       await session.subscribe(
-        "io.xconn.location",
+        topicName,
         (event) {
           List<dynamic> args = event.args;
           String name = args[2];
