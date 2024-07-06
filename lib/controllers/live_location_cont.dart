@@ -22,13 +22,11 @@ class LocationController extends GetxController {
   Future<void> mobileModelName() async {
     final plugin = DeviceName();
     deviceName = (await plugin.getName())!;
-    print("deviceName $deviceName");
     await _publish(30.19182, 71.44313, deviceName);
   }
 
   @override
   Future<void> onInit() async {
-    print("hello");
     super.onInit();
     await _checkLocationPermission();
     await _subscribe();
@@ -148,7 +146,6 @@ class LocationController extends GetxController {
   }
 
   Future<void> _subscribe() async {
-    print("subscribe");
     try {
       var session = await connect(
         "ws://192.168.0.124:8080/ws",

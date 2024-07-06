@@ -3,7 +3,6 @@ import "package:wampproto/auth.dart";
 import "package:wampproto/serializers.dart";
 import "package:xconn/exports.dart";
 
-
 Serializer _getSerializer(String? serializerString) {
   switch (serializerString) {
     case jsonSerializer:
