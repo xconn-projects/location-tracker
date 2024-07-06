@@ -1,5 +1,4 @@
 import "dart:async";
-
 import "package:flutter/material.dart";
 import "package:flutter_device_name/flutter_device_name.dart";
 import "package:geolocator/geolocator.dart";
