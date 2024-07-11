@@ -1,12 +1,15 @@
 import "dart:async";
 import "package:flutter/material.dart";
+
 import "package:flutter_device_name/flutter_device_name.dart";
 import "package:geolocator/geolocator.dart";
 import "package:get/get.dart";
 import "package:google_maps_flutter/google_maps_flutter.dart";
 import "package:location_tracker/res/constants.dart";
-import "package:location_tracker/res/wamp_util.dart";
 import "package:permission_handler/permission_handler.dart";
+import "package:wampproto/serializers.dart";
+
+import "package:xconn/exports.dart";
 
 class LocationController extends GetxController {
   Rx<Position?> currentPosition = Rx<Position?>(null);
@@ -39,6 +42,7 @@ class LocationController extends GetxController {
 
   Future<void> _checkLocationPermission() async {
     await mobileModelName();
+    await makeSession();
     PermissionStatus permissionStatus = await Permission.location.status;
     if (permissionStatus.isGranted) {
       _startLocationUpdates();
@@ -113,6 +117,15 @@ class LocationController extends GetxController {
     }
   }
 
+  Future<Session> makeSession() async {
+    var client = Client(serializer: JSONSerializer());
+    var session = await client.connect(
+      urlLink,
+      realm,
+    );
+    return session;
+  }
+
   Future<void> onMapCreated(GoogleMapController controller) async {
     mapController = controller;
     await _moveCamera();
@@ -120,13 +133,8 @@ class LocationController extends GetxController {
 
   Future<void> _publish(double latitude, double longitude, String name) async {
     try {
-      var session = await connect(
-        urlLink,
-        realm,
-        jsonSerializer,
-      );
-
-      await session.publish(
+      var publishSession = await makeSession();
+      await publishSession.publish(
         topicName,
         args: [latitude, longitude, name],
         kwargs: {},
@@ -146,35 +154,27 @@ class LocationController extends GetxController {
 
   Future<void> _subscribe() async {
     try {
-      var session = await connect(
-        urlLink,
-        realm,
-        jsonSerializer,
-      );
-
-      await session.subscribe(
+      var subscribeSession = await makeSession();
+      await subscribeSession.subscribe(
         topicName,
         (event) {
           List<dynamic> args = event.args;
+          if (args.length < 3) {
+            throw Exception("Insufficient arguments received: ${args.length}");
+          }
           String name = args[2];
-          double latitude;
-          double longitude;
-          if (args[0] is String) {
-            latitude = double.parse(args[0]);
-          } else if (args[0] is double) {
-            latitude = args[0];
-          } else {
-            throw Exception("Unexpected type for latitude: ${args.runtimeType}");
+          double parseCoordinate(value) {
+            if (value is double) {
+              return value;
+            } else if (value is String) {
+              return double.parse(value);
+            } else {
+              throw Exception("Unexpected type for coordinate: ${value.runtimeType}");
+            }
           }
 
-          if (args[1] is String) {
-            longitude = double.parse(args[1]);
-          } else if (args[1] is double) {
-            longitude = args[1];
-          } else {
-            throw Exception("Unexpected type for longitude: ${args.runtimeType}");
-          }
-
+          double latitude = parseCoordinate(args[0]);
+          double longitude = parseCoordinate(args[1]);
           updateOtherLocation(name, latitude, longitude);
         },
       );

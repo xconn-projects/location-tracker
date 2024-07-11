@@ -21,7 +21,7 @@ class LiveTrackingScreen extends StatelessWidget {
             : GoogleMap(
                 onMapCreated: _locationController.onMapCreated,
                 initialCameraPosition: const CameraPosition(
-                  target: LatLng(30.1917228, 71.4431091),
+                  target: LatLng(0, 0),
                   zoom: 14,
                 ),
                 markers: Set<Marker>.of(_locationController.markers.values),
