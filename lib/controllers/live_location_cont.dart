@@ -19,13 +19,13 @@ class LocationController extends GetxController {
   GoogleMapController? mapController;
   StreamSubscription<Position>? _positionStreamSubscription;
   Rx<DateTime> lastPublishTime = DateTime.now().obs;
-  String deviceName = "";
+  String? deviceName;
   Session? session;
 
-  Future<void> mobileModelName() async {
+  Future<void> mobileModelName(double lat, double long) async {
     final plugin = DeviceName();
-    deviceName = (await plugin.getName())!;
-    await _publish(30.19182, 71.44313, deviceName);
+    deviceName = (await plugin.getName()) ?? "Unknown Device";
+    await _publish(lat, long, deviceName!);
   }
 
   @override
@@ -42,7 +42,6 @@ class LocationController extends GetxController {
   }
 
   Future<void> _checkLocationPermission() async {
-    await mobileModelName();
     await makeSession();
     PermissionStatus permissionStatus = await Permission.location.status;
     if (permissionStatus.isGranted) {
@@ -71,6 +70,7 @@ class LocationController extends GetxController {
         Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position) async {
       currentPosition.value = position;
       routeCoordinates.add(LatLng(position.latitude, position.longitude));
+      await mobileModelName(position.latitude, position.longitude);
       _updateMarker();
       _updatePolyline();
       await _moveCamera();
@@ -80,8 +80,8 @@ class LocationController extends GetxController {
 
   void _updateMarker() {
     if (currentPosition.value != null) {
-      markers[deviceName] = Marker(
-        markerId: MarkerId(deviceName),
+      markers[deviceName!] = Marker(
+        markerId: MarkerId(deviceName!),
         position: LatLng(
           currentPosition.value!.latitude,
           currentPosition.value!.longitude,
@@ -98,8 +98,8 @@ class LocationController extends GetxController {
 
   void _updatePolyline() {
     if (routeCoordinates.length > 1) {
-      polylines[deviceName] = Polyline(
-        polylineId: PolylineId(deviceName),
+      polylines[deviceName!] = Polyline(
+        polylineId: PolylineId(deviceName!),
         points: routeCoordinates.toList(),
         color: Colors.blue,
         width: 5,
@@ -147,7 +147,7 @@ class LocationController extends GetxController {
     final now = DateTime.now();
     if (now.difference(lastPublishTime.value).inSeconds >= 5) {
       lastPublishTime.value = now;
-      await _publish(latitude, longitude, deviceName);
+      await _publish(latitude, longitude, deviceName!);
     }
   }
 
