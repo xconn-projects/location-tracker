@@ -20,6 +20,7 @@ class LocationController extends GetxController {
   StreamSubscription<Position>? _positionStreamSubscription;
   Rx<DateTime> lastPublishTime = DateTime.now().obs;
   String deviceName = "";
+  Session? session;
 
   Future<void> mobileModelName() async {
     final plugin = DeviceName();
@@ -117,13 +118,12 @@ class LocationController extends GetxController {
     }
   }
 
-  Future<Session> makeSession() async {
+  Future<void> makeSession() async {
     var client = Client(serializer: JSONSerializer());
-    var session = await client.connect(
+    session = await client.connect(
       urlLink,
       realm,
     );
-    return session;
   }
 
   Future<void> onMapCreated(GoogleMapController controller) async {
@@ -133,8 +133,7 @@ class LocationController extends GetxController {
 
   Future<void> _publish(double latitude, double longitude, String name) async {
     try {
-      var publishSession = await makeSession();
-      await publishSession.publish(
+      await session?.publish(
         topicName,
         args: [latitude, longitude, name],
         kwargs: {},
@@ -154,8 +153,7 @@ class LocationController extends GetxController {
 
   Future<void> _subscribe() async {
     try {
-      var subscribeSession = await makeSession();
-      await subscribeSession.subscribe(
+      await session?.subscribe(
         topicName,
         (event) {
           List<dynamic> args = event.args;
