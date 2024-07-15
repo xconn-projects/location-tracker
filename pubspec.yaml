@@ -31,6 +31,14 @@ dependencies:
   cupertino_icons: ^1.0.6
   flutter:
     sdk: flutter
+  flutter_device_name: ^0.0.1
+  flutter_spinkit: ^5.2.1
+  geolocator: ^12.0.0
+  get: ^4.6.6
+  google_maps_flutter: ^2.7.0
+  permission_handler: ^11.3.1
+  wampproto: ^0.1.0
+  xconn: ^0.1.0
 
 dev_dependencies:
   flutter_lints: ^3.0.0
@@ -50,8 +58,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
+  assets:
+     - assets/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
