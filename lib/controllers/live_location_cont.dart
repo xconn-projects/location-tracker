@@ -1,6 +1,5 @@
 import "dart:async";
 import "package:flutter/material.dart";
-
 import "package:flutter_device_name/flutter_device_name.dart";
 import "package:geolocator/geolocator.dart";
 import "package:get/get.dart";
@@ -8,11 +7,11 @@ import "package:google_maps_flutter/google_maps_flutter.dart";
 import "package:location_tracker/res/constants.dart";
 import "package:permission_handler/permission_handler.dart";
 import "package:wampproto/serializers.dart";
-
 import "package:xconn/exports.dart";
 
 class LocationController extends GetxController {
   Rx<Position?> currentPosition = Rx<Position?>(null);
+  Rx<Position?> previousPosition = Rx<Position?>(null);
   RxList<LatLng> routeCoordinates = RxList<LatLng>();
   RxMap<String, Marker> markers = <String, Marker>{}.obs;
   RxMap<String, Polyline> polylines = <String, Polyline>{}.obs;
@@ -21,6 +20,8 @@ class LocationController extends GetxController {
   Rx<DateTime> lastPublishTime = DateTime.now().obs;
   String? deviceName;
   Session? session;
+  BitmapDescriptor? arrowIcon;
+  double currentZoom = 15;
 
   Future<void> mobileModelName(double lat, double long) async {
     final plugin = DeviceName();
@@ -33,6 +34,7 @@ class LocationController extends GetxController {
     super.onInit();
     await _checkLocationPermission();
     await _subscribe();
+    await _loadArrowIcon();
   }
 
   @override
@@ -65,9 +67,13 @@ class LocationController extends GetxController {
   }
 
   void _startLocationUpdates() {
-    LocationSettings locationSettings = const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 10);
+    LocationSettings locationSettings = const LocationSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 1,
+    );
     _positionStreamSubscription =
         Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position) async {
+      previousPosition.value = currentPosition.value;
       currentPosition.value = position;
       routeCoordinates.add(LatLng(position.latitude, position.longitude));
       await mobileModelName(position.latitude, position.longitude);
@@ -78,8 +84,23 @@ class LocationController extends GetxController {
     });
   }
 
+  Future<void> _loadArrowIcon() async {
+    arrowIcon = await BitmapDescriptor.asset(
+      ImageConfiguration(devicePixelRatio: currentZoom),
+      "assets/arrow_icon.png",
+    );
+    update();
+  }
+
   void _updateMarker() {
-    if (currentPosition.value != null) {
+    if (currentPosition.value != null && previousPosition.value != null) {
+      double bearing = Geolocator.bearingBetween(
+        previousPosition.value!.latitude,
+        previousPosition.value!.longitude,
+        currentPosition.value!.latitude,
+        currentPosition.value!.longitude,
+      );
+
       markers[deviceName!] = Marker(
         markerId: MarkerId(deviceName!),
         position: LatLng(
@@ -90,7 +111,9 @@ class LocationController extends GetxController {
           title: deviceName,
           snippet: "${currentPosition.value!.latitude}, ${currentPosition.value!.longitude}",
         ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        icon: arrowIcon!,
+        rotation: bearing,
+        anchor: const Offset(0.5, 0.5),
       );
       update();
     }
@@ -101,7 +124,7 @@ class LocationController extends GetxController {
       polylines[deviceName!] = Polyline(
         polylineId: PolylineId(deviceName!),
         points: routeCoordinates.toList(),
-        color: Colors.blue,
+        color: Colors.red,
         width: 5,
       );
       update();
@@ -131,6 +154,11 @@ class LocationController extends GetxController {
     await _moveCamera();
   }
 
+  Future<void> onCameraMove(CameraPosition position) async {
+    currentZoom = position.zoom;
+    await _loadArrowIcon();
+  }
+
   Future<void> _publish(double latitude, double longitude, String name) async {
     try {
       await session?.publish(
@@ -145,7 +173,7 @@ class LocationController extends GetxController {
 
   Future<void> _refreshPublish(double latitude, double longitude) async {
     final now = DateTime.now();
-    if (now.difference(lastPublishTime.value).inSeconds >= 5) {
+    if (now.difference(lastPublishTime.value).inSeconds >= 2) {
       lastPublishTime.value = now;
       await _publish(latitude, longitude, deviceName!);
     }
@@ -197,7 +225,14 @@ class LocationController extends GetxController {
         title: name,
         snippet: "$latitude, $longitude",
       ),
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      icon: arrowIcon!,
+      rotation: Geolocator.bearingBetween(
+        previousPosition.value?.latitude ?? latitude,
+        previousPosition.value?.longitude ?? longitude,
+        latitude,
+        longitude,
+      ),
+      anchor: const Offset(0.5, 0.5),
     );
 
     update();

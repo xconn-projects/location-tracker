@@ -22,7 +22,7 @@ class LiveTrackingScreen extends StatelessWidget {
                 onMapCreated: _locationController.onMapCreated,
                 initialCameraPosition: const CameraPosition(
                   target: LatLng(0, 0),
-                  zoom: 14,
+                  zoom: 18,
                 ),
                 markers: Set<Marker>.of(_locationController.markers.values),
                 polylines: Set<Polyline>.of(_locationController.polylines.values),

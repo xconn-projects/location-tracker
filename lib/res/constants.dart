@@ -8,7 +8,7 @@ const topicName = "io.xconn.location";
 const realm = "realm1";
 
 /// Url Link ///
-const urlLink = "ws://192.168.0.124:8080/ws";
+const urlLink = "ws://162.19.137.112:9050/ws";
 
 SpinKitChasingDots spinKitRotatingCircle = const SpinKitChasingDots(
   color: Colors.deepPurple,
