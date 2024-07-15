@@ -101,7 +101,7 @@ class LocationController extends GetxController {
   }
 
   void _updateArrowIcon(double zoom) {
-    if (zoom <= 10) {
+    if (zoom >= 15) {
       arrowIcon = arrowIconSmall;
     } else {
       arrowIcon = arrowIconLarge;
@@ -173,6 +173,7 @@ class LocationController extends GetxController {
       currentZoom = position.zoom;
       _updateArrowIcon(currentZoom);
       _updateMarker();
+      _updatePolyline();
     }
   }
 
@@ -190,8 +191,6 @@ class LocationController extends GetxController {
 
   Future<void> _subscribe() async {
     try {
-      _updateMarker();
-      _updatePolyline();
       await session?.subscribe(
         topicName,
         (event) {
