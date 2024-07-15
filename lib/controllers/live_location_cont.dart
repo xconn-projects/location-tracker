@@ -23,6 +23,9 @@ class LocationController extends GetxController {
   BitmapDescriptor? arrowIcon;
   double currentZoom = 15;
 
+  late BitmapDescriptor arrowIconSmall;
+  late BitmapDescriptor arrowIconLarge;
+
   Future<void> mobileModelName(double lat, double long) async {
     final plugin = DeviceName();
     deviceName = (await plugin.getName()) ?? "Unknown Device";
@@ -34,7 +37,8 @@ class LocationController extends GetxController {
     super.onInit();
     await _checkLocationPermission();
     await _subscribe();
-    await _loadArrowIcon(currentZoom);
+    await _loadArrowIcons();
+    _updateArrowIcon(currentZoom);
   }
 
   @override
@@ -80,23 +84,28 @@ class LocationController extends GetxController {
       currentPosition.value = position;
       routeCoordinates.add(LatLng(position.latitude, position.longitude));
       await mobileModelName(position.latitude, position.longitude);
-      _updateMarker();
-      _updatePolyline();
       await _moveCamera();
       await _publish(position.latitude, position.longitude, deviceName!);
     });
   }
 
-  Future<void> _loadArrowIcon(double zoom) async {
-    double scaleFactor = zoom / 15;
-    final ImageConfiguration imageConfiguration = ImageConfiguration(
-      devicePixelRatio: scaleFactor,
+  Future<void> _loadArrowIcons() async {
+    arrowIconSmall = await BitmapDescriptor.asset(
+      ImageConfiguration.empty,
+      "assets/arrow_icon_small.png",
     );
-
-    arrowIcon = await BitmapDescriptor.asset(
-      imageConfiguration,
+    arrowIconLarge = await BitmapDescriptor.asset(
+      ImageConfiguration.empty,
       "assets/arrow_icon.png",
     );
+  }
+
+  void _updateArrowIcon(double zoom) {
+    if (zoom <= 10) {
+      arrowIcon = arrowIconSmall;
+    } else {
+      arrowIcon = arrowIconLarge;
+    }
   }
 
   void _updateMarker() {
@@ -162,7 +171,7 @@ class LocationController extends GetxController {
   Future<void> onCameraMove(CameraPosition position) async {
     if ((position.zoom - currentZoom).abs() > 0.1) {
       currentZoom = position.zoom;
-      await _loadArrowIcon(currentZoom);
+      _updateArrowIcon(currentZoom);
       _updateMarker();
     }
   }
@@ -181,6 +190,8 @@ class LocationController extends GetxController {
 
   Future<void> _subscribe() async {
     try {
+      _updateMarker();
+      _updatePolyline();
       await session?.subscribe(
         topicName,
         (event) {
