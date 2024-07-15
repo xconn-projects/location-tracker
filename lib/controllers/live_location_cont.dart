@@ -34,7 +34,7 @@ class LocationController extends GetxController {
     super.onInit();
     await _checkLocationPermission();
     await _subscribe();
-    await _loadArrowIcon();
+    await _loadArrowIcon(currentZoom);
   }
 
   @override
@@ -44,14 +44,18 @@ class LocationController extends GetxController {
   }
 
   Future<void> _checkLocationPermission() async {
-    await makeSession();
     PermissionStatus permissionStatus = await Permission.location.status;
     if (permissionStatus.isGranted) {
-      _startLocationUpdates();
+      getLocation();
+      try {
+        await makeSession();
+      } on Exception catch (e) {
+        Get.snackbar("Session Connection Error", e.toString());
+      }
     } else {
       PermissionStatus permissionResult = await Permission.location.request();
       if (permissionResult.isGranted) {
-        _startLocationUpdates();
+        getLocation();
         Get.snackbar("Location", "Permission Granted Successfully");
       } else if (permissionResult.isDenied) {
         Get.snackbar("Location", "Permission is Denied");
@@ -62,11 +66,10 @@ class LocationController extends GetxController {
         );
         await openAppSettings();
       }
-      return;
     }
   }
 
-  void _startLocationUpdates() {
+  void getLocation() {
     LocationSettings locationSettings = const LocationSettings(
       accuracy: LocationAccuracy.bestForNavigation,
       distanceFilter: 1,
@@ -80,16 +83,20 @@ class LocationController extends GetxController {
       _updateMarker();
       _updatePolyline();
       await _moveCamera();
-      await _refreshPublish(position.latitude, position.longitude);
+      await _publish(position.latitude, position.longitude, deviceName!);
     });
   }
 
-  Future<void> _loadArrowIcon() async {
+  Future<void> _loadArrowIcon(double zoom) async {
+    double scaleFactor = zoom / 15;
+    final ImageConfiguration imageConfiguration = ImageConfiguration(
+      devicePixelRatio: scaleFactor,
+    );
+
     arrowIcon = await BitmapDescriptor.asset(
-      ImageConfiguration(devicePixelRatio: currentZoom),
+      imageConfiguration,
       "assets/arrow_icon.png",
     );
-    update();
   }
 
   void _updateMarker() {
@@ -115,7 +122,6 @@ class LocationController extends GetxController {
         rotation: bearing,
         anchor: const Offset(0.5, 0.5),
       );
-      update();
     }
   }
 
@@ -127,7 +133,6 @@ class LocationController extends GetxController {
         color: Colors.red,
         width: 5,
       );
-      update();
     }
   }
 
@@ -155,8 +160,11 @@ class LocationController extends GetxController {
   }
 
   Future<void> onCameraMove(CameraPosition position) async {
-    currentZoom = position.zoom;
-    await _loadArrowIcon();
+    if ((position.zoom - currentZoom).abs() > 0.1) {
+      currentZoom = position.zoom;
+      await _loadArrowIcon(currentZoom);
+      _updateMarker();
+    }
   }
 
   Future<void> _publish(double latitude, double longitude, String name) async {
@@ -168,14 +176,6 @@ class LocationController extends GetxController {
       );
     } on Exception catch (e) {
       return Future.error(e);
-    }
-  }
-
-  Future<void> _refreshPublish(double latitude, double longitude) async {
-    final now = DateTime.now();
-    if (now.difference(lastPublishTime.value).inSeconds >= 2) {
-      lastPublishTime.value = now;
-      await _publish(latitude, longitude, deviceName!);
     }
   }
 
@@ -234,7 +234,5 @@ class LocationController extends GetxController {
       ),
       anchor: const Offset(0.5, 0.5),
     );
-
-    update();
   }
 }
